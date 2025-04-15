@@ -1,10 +1,10 @@
 
 @clear
-mov $@_$DATA+4096,%edx
+lea @_$DATA+4096-@_$NEXT(%rip),%rdx
 mov $1600000,%ecx
 @clear_loop
 movb $0,(%rdx)
-inc %edx
+inc %rdx
 dec %ecx
 jne @clear_loop
 ret
@@ -49,11 +49,12 @@ mov 24(%rbp),%edx
 sub %edx,%ecx
 add %edx,%eax
 shl $2,%eax
-add $@_$DATA+4096+1600,%eax
+lea @_$DATA+4096+1600-@_$NEXT(%rip),%rdx
+add %rdx,%rax
 mov 40(%rbp),%edx
 @paint_line_loop
 mov %edx,(%rax)
-add $4,%eax
+add $4,%rax
 dec %ecx
 jne @paint_line_loop
 
@@ -263,7 +264,7 @@ push %rdx
 sub $80,%rsp
 
 # @_$DATA+600 is zero
-movss @_$DATA+600,%xmm0
+movss @_$DATA+600-@_$NEXT(%rip),%xmm0
 shufps $0x00,%xmm0,%xmm0
 cvtsi2ss %edx,%xmm1
 movss %xmm1,%xmm0
@@ -322,7 +323,8 @@ movups %xmm0,32(%rsp)
 mov 2(%rdi),%bl
 shr $2,%bl
 and $0x3c,%bx
-mov @color_tab(%rbx),%ebx
+lea @color_tab-@_$NEXT(%rip),%rax
+mov (%rbx,%rax,1),%ebx
 mov %ebx,48(%rsp)
 
 
@@ -345,7 +347,7 @@ push %rax
 push %rbx
 push %rdi
 push %rsi
-mov $@_$DATA+800,%rsi
+lea @_$DATA+800-@_$NEXT(%rip),%rsi
 movzbl (%rdi),%ebx
 inc %rdi
 @paint_element_loop
@@ -362,24 +364,25 @@ ret
 
 @init_point_tab
 mov $40,%ecx
-mov $@_$DATA+802,%rax
-mov $@point_tab,%rdx
+lea @_$DATA+802-@_$NEXT(%rip),%rax
+lea @point_tab-@_$DATA-802(%rax),%rdx 
+lea @value_tab-@point_tab(%rdx),%rsi
 xor %ebx,%ebx
 @init_point_tab_loop
 mov (%rdx),%bl
 and $0xf,%bl
 add %bl,%bl
-mov @value_tab(%rbx),%di
+mov (%rbx,%rsi,1),%di
 mov %di,8(%rax)
 mov (%rdx),%bl
 and $0xf0,%bl
 shr $3,%bl
-mov @value_tab(%rbx),%di
+mov (%rbx,%rsi,1),%di
 mov %di,4(%rax)
 mov 1(%rdx),%bl
 and $0xf,%bl
 add %bl,%bl
-mov @value_tab(%rbx),%di
+mov (%rbx,%rsi,1),%di
 mov %di,(%rax)
 add $16,%rax
 add $2,%rdx
@@ -393,6 +396,7 @@ push %rcx
 push %rdx
 push %rbx
 push %rdi
+push %rsi
 mov $256,%eax
 @paint_snake_loop
 lea -1(%rax),%ebx
@@ -401,7 +405,8 @@ jne @paint_snake_reorder
 xor $7,%bl
 @paint_snake_reorder
 mov %ebx,%ecx
-mov @_$DATA+256(%rbx),%dil
+lea @_$DATA+256-@_$NEXT(%rip),%rdi
+mov (%rdi,%rbx,1),%dil
 movzbl %dil,%ebx
 sub $1,%ebx
 jl @paint_snake_skip
@@ -410,12 +415,15 @@ shr $4,%edx
 and $0xf,%ecx
 sub $8,%ecx
 sub $8,%edx
-movzbl @elem_tab(%rbx),%edi
-add $@elem_head,%edi
+lea @elem_tab-@_$NEXT(%rip),%rdi
+lea @elem_head-@_$NEXT(%rip),%rsi
+movzbl (%rbx,%rdi,1),%edi
+add %rsi,%rdi
 call @paint_element
 @paint_snake_skip
 dec %eax
 jne @paint_snake_loop
+pop %rsi
 pop %rdi
 pop %rbx
 pop %rdx
@@ -431,22 +439,22 @@ push %r13
 call @clear
 xor %ecx,%ecx
 xor %edx,%edx
-mov $@elem_wall,%rdi
+lea @elem_wall-@_$NEXT(%rip),%rdi
 call @paint_element
-movzbl @_$DATA+0,%ecx
+movzbl @_$DATA+0-@_$NEXT(%rip),%ecx
 mov %ecx,%edx
 shr $4,%edx
 and $0x0f,%cl
 sub $8,%ecx
 sub $8,%edx
-mov $@elem_fruit,%rdi
+lea @elem_fruit-@_$NEXT(%rip),%rdi
 call @paint_element
 
 call @paint_snake
 
 xor %ecx,%ecx
 xor %edx,%edx
-mov $@elem_wall_top,%rdi
+lea @elem_wall_top-@_$NEXT(%rip),%rdi
 call @paint_element
 
 pop %r13
@@ -487,9 +495,10 @@ push %rdx
 @generate_loop
 call @rand
 movzbl %al,%edx
-cmpb $0,@_$DATA+256(%rdx)
+lea @_$DATA+256-@_$NEXT(%rip),%rax
+cmpb $0,(%rax,%rdx,1)
 jne @generate_loop
-mov %al,@_$DATA+0
+mov %dl,@_$DATA+0-@_$NEXT(%rip)
 pop %rdx
 pop %rcx
 pop %rax
@@ -498,12 +507,12 @@ ret
 @game_over
 sub $32,%rsp
 and $0xf0,%spl
-mov @_$DATA+32,%rcx
+mov @_$DATA+32-@_$NEXT(%rip),%rcx
 xor %edx,%edx
 .dllcall "user32.dll" "KillTimer"
 xor %ecx,%ecx
-mov $@game_over_msg,%rdx
-mov $@msg_str,%r8
+lea @game_over_msg-@_$NEXT(%rip),%rdx
+lea @msg_str-@_$NEXT(%rip),%r8
 xor %r9d,%r9d
 .dllcall "user32.dll" "MessageBoxA"
 jmp @End
@@ -511,48 +520,50 @@ jmp @End
 @game_win
 sub $32,%rsp
 and $0xf0,%spl
-mov @_$DATA+32,%rcx
+mov @_$DATA+32-@_$NEXT(%rip),%rcx
 xor %edx,%edx
 .dllcall "user32.dll" "KillTimer"
 xor %ecx,%ecx
-mov $@game_win_msg,%rdx
-mov $@msg_str,%r8
+lea @game_win_msg-@_$NEXT(%rip),%rdx
+lea @msg_str-@_$NEXT(%rip),%r8
 xor %r9d,%r9d
 .dllcall "user32.dll" "MessageBoxA"
 jmp @End
 
 @snake_move
-mov @_$DATA+8,%eax
-mov @_$DATA+12,%ecx
+lea @_$DATA+256-@_$NEXT(%rip),%rbx
+mov @_$DATA+8-@_$NEXT(%rip),%eax
+mov @_$DATA+12-@_$NEXT(%rip),%ecx
 shl $4,%ecx
 or %ecx,%eax
-mov @_$DATA+256(%rax),%cl
+lea @_$DATA+256-@_$NEXT(%rip),%rbx
+mov (%rax,%rbx,1),%cl
 xor %edx,%edx
-xchg %edx,@_$DATA+20
+xchg %edx,@_$DATA+20-@_$NEXT(%rip)
 test %edx,%edx
 jne @snake_grow
-movb $0,@_$DATA+256(%rax)
+movb $0,(%rax,%rbx,1)
 cmp $2,%cl
 jne @snake_down3
-decb @_$DATA+12
+decb @_$DATA+12-@_$NEXT(%rip)
 @snake_down3
 cmp $3,%cl
 jne @snake_up3
-incb @_$DATA+12
+incb @_$DATA+12-@_$NEXT(%rip)
 @snake_up3
 cmp $4,%cl
 jne @snake_right3
-incb @_$DATA+8
+incb @_$DATA+8-@_$NEXT(%rip)
 @snake_right3
 cmp $5,%cl
 jne @snake_left3
-decb @_$DATA+8
+decb @_$DATA+8-@_$NEXT(%rip)
 @snake_left3
 @snake_grow
 
-mov @_$DATA+40,%eax
-mov @_$DATA+17,%cl
-mov %cl,@_$DATA+16
+mov @_$DATA+40-@_$NEXT(%rip),%eax
+mov @_$DATA+17-@_$NEXT(%rip),%cl
+mov %cl,@_$DATA+16-@_$NEXT(%rip)
 mov %rax,%rsi
 
 mov %al,%dl
@@ -580,34 +591,33 @@ cmp $0,%dl
 je @game_over
 dec %eax
 @snake_left2
-mov %eax,@_$DATA+40
-
-cmpb $0,@_$DATA+256(%rax)
+mov %eax,@_$DATA+40-@_$NEXT(%rip)
+cmpb $0,(%rax,%rbx,1)
 jne @game_over
-cmp %al,@_$DATA+0
+cmp %al,@_$DATA+0-@_$NEXT(%rip)
 jne @snake_no_eat
 
-mov %cl,@_$DATA+256(%rsi)
-movb $1,@_$DATA+256(%rax)
+mov %cl,(%rsi,%rbx,1)
+movb $1,(%rax,%rbx,1)
 call @generate_fruit
-incl @_$DATA+24
-cmpl $50,@_$DATA+24
+incl @_$DATA+24-@_$NEXT(%rip)
+cmpl $50,@_$DATA+24-@_$NEXT(%rip)
 jae @game_win
-movb $1,@_$DATA+20
+movb $1,@_$DATA+20-@_$NEXT(%rip)
 
 jmp @snake_eat_end
 @snake_no_eat
-mov %cl,@_$DATA+256(%rsi)
-movb $1,@_$DATA+256(%rax)
+mov %cl,(%rsi,%rbx,1)
+movb $1,(%rax,%rbx,1)
 @snake_eat_end
 ret
 
 @game_init
 mov $0x04040404,%eax
-mov %eax,@_$DATA+256
-movb $1,@_$DATA+260
-mov %ax,@_$DATA+16
-mov %al,@_$DATA+40
+mov %eax,@_$DATA+256-@_$NEXT(%rip)
+movb $1,@_$DATA+260-@_$NEXT(%rip)
+mov %ax,@_$DATA+16-@_$NEXT(%rip)
+mov %al,@_$DATA+40-@_$NEXT(%rip)
 call @generate_fruit
 ret
 
@@ -648,7 +658,7 @@ call @paint_all
 
 mov %r13,%rcx
 mov $1600000,%edx
-mov $@_$DATA+4096,%r8
+lea @_$DATA+4096-@_$NEXT(%rip),%r8
 .dllcall "gdi32.dll" "SetBitmapBits"
 mov %rbx,%rcx
 xor %edx,%edx
@@ -692,30 +702,30 @@ cmp $256,%edx
 jne @End_WM_KEYDOWN
 cmp $37,%r8d
 jne @End_VK_LEFT
-cmpb $4,@_$DATA+16
+cmpb $4,@_$DATA+16-@_$NEXT(%rip)
 je @End_VK_LEFT
-movb $5,@_$DATA+17
+movb $5,@_$DATA+17-@_$NEXT(%rip)
 @End_VK_LEFT
 
 cmp $38,%r8d
 jne @End_VK_UP
-cmpb $2,@_$DATA+16
+cmpb $2,@_$DATA+16-@_$NEXT(%rip)
 je @End_VK_UP
-movb $3,@_$DATA+17
+movb $3,@_$DATA+17-@_$NEXT(%rip)
 @End_VK_UP
 
 cmp $39,%r8d
 jne @End_VK_RIGHT
-cmpb $5,@_$DATA+16
+cmpb $5,@_$DATA+16-@_$NEXT(%rip)
 je @End_VK_RIGHT
-movb $4,@_$DATA+17
+movb $4,@_$DATA+17-@_$NEXT(%rip)
 @End_VK_RIGHT
 
 cmp $40,%r8d
 jne @End_VK_DOWN
-cmpb $3,@_$DATA+16
+cmpb $3,@_$DATA+16-@_$NEXT(%rip)
 je @End_VK_DOWN
-movb $2,@_$DATA+17
+movb $2,@_$DATA+17-@_$NEXT(%rip)
 @End_VK_DOWN
 
 @End_WM_KEYDOWN
@@ -743,14 +753,17 @@ call @init_point_tab
 call @game_init
 xor %ebx,%ebx
 push %rbx
-pushq $@WinName
+lea @WinName-@_$NEXT(%rip),%rax
+push %rax
 push %rbx
 pushq $8
 push %rbx
 push %rbx
-pushq $0x400000
+lea @_$IMAGE-@_$NEXT(%rip),%rax
+push %rax
 push %rbx
-pushq $@WndProc
+lea @WndProc-@_$NEXT(%rip),%rax
+push %rax
 pushq $80
 sub $32,%rsp
 xor %ecx,%ecx
@@ -769,11 +782,12 @@ je @End
 
 xor %ecx,%ecx
 inc %ch
-mov $@WinName,%edx
-mov %edx,%r8d
+lea @WinName-@_$NEXT(%rip),%rdx
+mov %rdx,%r8
 mov $0x10c80000,%r9d
 push %rbx
-pushq $0x400000
+lea @_$IMAGE-@_$NEXT(%rip),%rax
+push %rax
 push %rbx
 push %rbx
 pushq $500
@@ -787,7 +801,7 @@ sub $32,%rsp
 test %rax,%rax
 je @End
 
-mov %rax,@_$DATA+32
+mov %rax,@_$DATA+32-@_$NEXT(%rip)
 
 mov %rax,%rcx
 xor %edx,%edx
@@ -959,9 +973,8 @@ xor %ecx,%ecx
 @elem_tab
 .byte 0,@elem_tail_up-@elem_head,@elem_tail_down-@elem_head,@elem_tail_left-@elem_head,@elem_tail_right-@elem_head
 @WinName
-.string "Snake"
 @msg_str
-.string "Message"
+.string "Snake 4K"
 @game_over_msg
 .string "Game over!"
 @game_win_msg
